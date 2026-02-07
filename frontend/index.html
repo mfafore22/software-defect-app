@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Software Defect Classifier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            min-height: 100vh;
+            color: #fff;
+            padding: 40px 20px;
+        }
+        
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        h1 { text-align: center; margin-bottom: 10px; }
+        
+        .subtitle { text-align: center; color: #888; margin-bottom: 40px; }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        label { display: block; margin-bottom: 8px; color: #ccc; }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        input:focus { outline: none; border-color: #00d4ff; }
+        
+        button {
+            width: 100%;
+            padding: 16px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        button:hover { transform: translateY(-2px); }
+        button:disabled { background: #555; cursor: not-allowed; }
+        
+        .result { display: none; text-align: center; }
+        .result.show { display: block; }
+        .result-icon { font-size: 4rem; margin-bottom: 20px; }
+        .result-text { font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; }
+        .result-confidence { color: #888; }
+        
+        .defect .result-text { color: #ff4444; }
+        .no-defect .result-text { color: #00ff88; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Software Defect Classifier</h1>
+        <p class="subtitle">Powered by DistilBERT + LoRA (Fine-tuned on JM1 Dataset)</p>
+        
+        <div class="card">
+            <div class="form-grid">
+                <div>
+                    <label>Lines of Code (LOC)</label>
+                    <input type="number" id="loc" value="100">
+                </div>
+                <div>
+                    <label>Cyclomatic Complexity</label>
+                    <input type="number" id="complexity" value="10">
+                </div>
+                <div>
+                    <label>Essential Complexity</label>
+                    <input type="number" id="essential" value="5">
+                </div>
+                <div>
+                    <label>Integration Complexity</label>
+                    <input type="number" id="integration" value="3">
+                </div>
+            </div>
+            <button id="btn" onclick="predict()">Analyze Code</button>
+        </div>
+        
+        <div id="result" class="card result">
+            <div class="result-icon" id="icon"></div>
+            <div class="result-text" id="text"></div>
+            <div class="result-confidence" id="conf"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function predict() {
+            const btn = document.getElementById('btn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            
+            const data = {
+                loc: parseFloat(document.getElementById('loc').value),
+                complexity: parseFloat(document.getElementById('complexity').value),
+                essential: parseFloat(document.getElementById('essential').value),
+                integration: parseFloat(document.getElementById('integration').value)
+            };
+            
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await res.json();
+                const div = document.getElementById('result');
+                
+                div.classList.add('show');
+                div.classList.remove('defect', 'no-defect');
+                div.classList.add(result.prediction === 'Defect' ? 'defect' : 'no-defect');
+                
+                document.getElementById('icon').textContent = result.prediction === 'Defect' ? '⚠️' : '✅';
+                document.getElementById('text').textContent = result.prediction;
+                document.getElementById('conf').textContent = `Confidence: ${result.confidence}%`;
+            } catch (e) {
+                alert('Error: Make sure backend is running on port 5000');
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Analyze Code';
+        }
+    </script>
+</body>
+</html>
